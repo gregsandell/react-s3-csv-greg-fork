@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const csv = require("csv-parser");
 const app = express();
 const port = process.env.SERVER_PORT || 5001;
+require('dotenv').config()
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -20,44 +21,47 @@ app.use(cors());
 
 app.post("/begin-upload", (req, res) => {
   //get name of the file we're trying to upload
-  let fileName = req.body.fileName;
-  let fileType = req.body.fileType;
-
-  //Fake user ID, get from logged in user
-  let userID = "12345";
+  const fileName = req.body.fileName;
+  const fileType = req.body.fileType;
+  const folder = req.body.username
 
   //Create new "Upload" record in DB, which will have status.
-  let uploadID = 70;
+  const uploadID = 70;
 
   //Generate presigned URL
   const s3 = new AWS.S3();
   const myBucket = process.env.BUCKET_NAME;
-  const myKey = userID + "/" + fileName;
+  const filenamePath = `${folder}/${fileName}`;
   const signedUrlExpireSeconds = 60 * 5;
 
   const url = s3.getSignedUrl("putObject", {
     Bucket: myBucket,
-    Key: myKey,
+    Key: filenamePath, // GJS must be where the file data is uploaded
     ContentType: "multipart/form-data",
     Expires: signedUrlExpireSeconds,
   });
 
   res.send({
     fileLocation: url,
-    uploadID: 70,
+    uploadID: uploadID, // GJS so the front end gets it back, but what good is it?
   });
 });
 
 app.post("/process-upload", (req, res) => {
   //The request body will have the ID of the upload
-  let uploadID = req.body.uploadID;
+  let uploadID = req.body.uploadID; // GJS unused! What is its purpose?
+  const filename = req.body.filename
+  const folder = req.body.username
 
   //In practice we would get the upload information and retireve file location
   //For testing we know
   const s3 = new AWS.S3();
-  const myBucket = "MY BUCKET";
-  const myKey = 12345 + "/" + "FILE NAME";
-  const file = s3
+  const myBucket = process.env.BUCKET_NAME;
+  // GJS Regarding the next line
+  // GJS 12345 is a stand-in for a bucket directory, choose it in the web form
+  // GJS original code had "FILE NAME" here instead of passing correct name (upload.csv), why?
+  const myKey = `${folder}/${filename}`; //
+  const file = s3 // GJS We must be grabbing the file data we sent by the "putObject" fetch call
     .getObject({
       Bucket: myBucket,
       Key: myKey,
