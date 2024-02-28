@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-const SERVER_PORT = process.env.REACT_APP_SERVER_PORT
 
 function App() {
   const [isFilePicked, setIsFilePicked] = useState(false);
@@ -12,6 +11,8 @@ function App() {
     setSelectedFile(event.target.files[0]);
     setIsFilePicked(true);
   };
+  const getS3FilePath = () => `${username}/${selectedFile.name}`
+
   const changeUserHandler = (event) => {
     setUsername(event.target.value);
     setIsUserPicked(true);
@@ -20,21 +21,20 @@ function App() {
   const handleSubmission = async () => {
     //Step 1, we hit the server and ask... WHERE do I put this file?
     let uploadData = await getUploadData();
-    let uploadID = uploadData.uploadID; // GJS artificially created
-    let fileLocation = uploadData.fileLocation; // GSJ rename to s3FileUrl
+    let uploadID = uploadData.uploadID; // Artificially created, purpose uncertain
+    let s3FileUrlEndpoint = uploadData.fileLocation;
 
     //Step 2 we POST the file to AWS
-    await uploadToAWS(fileLocation);
-
-    // GJS check the network tab
+    await uploadToAWS(s3FileUrlEndpoint);
 
     //Step 3 we tell our server we are done with the upload
-    let processedData = await tellServerComplete(uploadID);
-    setIsDataProcessed(true);  // GJS Getting back an undefined processData
+    const processedData = await tellServerComplete(uploadID);
+    if (processedData) {
+    setIsDataProcessed(true);
     setProcessedData(processedData.results);
-
-
-
+    } else {
+      console.error('Eror: Could not retrieve the file from s3')
+    }
   };
 
   const getUploadData = () => {
@@ -45,6 +45,7 @@ function App() {
         body: JSON.stringify({
           fileName: selectedFile.name,
           fileType: selectedFile.type,
+          s3FilenamePath: getS3FilePath(),
           username: username,
         }),
       };
@@ -72,7 +73,7 @@ function App() {
     });
   };
 
-  const uploadToAWS = (fileLocation) => { // GJS rename arg s3FileUrl
+  const uploadToAWS = (s3FileUrlEndpoint) => {
     return new Promise((resolve) => {
       //Make put request with raw file as body
       const requestOptions = {
@@ -82,7 +83,7 @@ function App() {
       };
       //Perform the upload
       const fetch = window.fetch
-      fetch(fileLocation, requestOptions)
+      fetch(s3FileUrlEndpoint, requestOptions)
         .then((response) => {
           if (response.status === 200) {
             resolve(true);
@@ -102,10 +103,14 @@ function App() {
       const requestOptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadID: uploadID, filename: selectedFile.name, username: username }),
+        body: JSON.stringify(
+            { uploadID: uploadID,
+              s3FilenamePath: getS3FilePath(),
+            }
+        ),
       };
       const fetch = window.fetch;
-      fetch("/process-upload", requestOptions)// GJS Physical file not passed, that happened arlier
+      fetch("/process-upload", requestOptions)
         .then((response) => {
           return response.json()
         })

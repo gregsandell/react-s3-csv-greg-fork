@@ -21,9 +21,8 @@ app.use(cors());
 
 app.post("/begin-upload", (req, res) => {
   //get name of the file we're trying to upload
-  const fileName = req.body.fileName;
-  const fileType = req.body.fileType;
-  const folder = req.body.username
+  const fileType = req.body.fileType; // GJS possibly add as metadata?
+  const s3FilenamePath = req.body.s3FilenamePath
 
   //Create new "Upload" record in DB, which will have status.
   const uploadID = 70;
@@ -31,47 +30,41 @@ app.post("/begin-upload", (req, res) => {
   //Generate presigned URL
   const s3 = new AWS.S3();
   const myBucket = process.env.BUCKET_NAME;
-  const filenamePath = `${folder}/${fileName}`;
   const signedUrlExpireSeconds = 60 * 5;
 
   const url = s3.getSignedUrl("putObject", {
     Bucket: myBucket,
-    Key: filenamePath, // GJS must be where the file data is uploaded
+    Key: s3FilenamePath, // GJS Is this what gets the file data/blob uploaded?
     ContentType: "multipart/form-data",
     Expires: signedUrlExpireSeconds,
   });
 
   res.send({
     fileLocation: url,
-    uploadID: uploadID, // GJS so the front end gets it back, but what good is it?
+    uploadID: uploadID, // GJS metadata-relevant (perhaps) but unused
   });
 });
 
 app.post("/process-upload", (req, res) => {
   //The request body will have the ID of the upload
-  let uploadID = req.body.uploadID; // GJS unused! What is its purpose?
-  const filename = req.body.filename
-  const folder = req.body.username
+  let uploadID = req.body.uploadID; // GJS metadata-relevant (perhaps) but unused
+  const s3FilenamePath = req.body.s3FilenamePath
 
   //In practice we would get the upload information and retireve file location
   //For testing we know
   const s3 = new AWS.S3();
   const myBucket = process.env.BUCKET_NAME;
-  // GJS Regarding the next line
-  // GJS 12345 is a stand-in for a bucket directory, choose it in the web form
-  // GJS original code had "FILE NAME" here instead of passing correct name (upload.csv), why?
-  const myKey = `${folder}/${filename}`; //
-  const file = s3 // GJS We must be grabbing the file data we sent by the "putObject" fetch call
+  const file = s3 // GJS Grab the file data we sent by the "putObject" fetch call (not sure about this)
     .getObject({
       Bucket: myBucket,
-      Key: myKey,
+      Key: s3FilenamePath,
     })
     .createReadStream();
   let results = [];
   file
     .pipe(csv())
     .on("data", function (data) {
-      results.push(data); // --> here
+      results.push(data);
     })
     .on("end", () => {
       res.send({ results: results });
