@@ -4,16 +4,16 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const csv = require("csv-parser");
 const app = express();
-const port = 5001;
+const port = process.env.SERVER_PORT || 5001;
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 //Test access key and secrete key
 AWS.config = new AWS.Config({
-  accessKeyId: "YOUR ACCESS KEY",
-  secretAccessKey: "YOUR SECRET ID",
-  region: "YOUR REGION",
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
   signatureVersion: "v4",
 });
 app.use(cors());
@@ -31,7 +31,7 @@ app.post("/begin-upload", (req, res) => {
 
   //Generate presigned URL
   const s3 = new AWS.S3();
-  const myBucket = "YOUR BUCKET NAME";
+  const myBucket = process.env.BUCKET_NAME;
   const myKey = userID + "/" + fileName;
   const signedUrlExpireSeconds = 60 * 5;
 

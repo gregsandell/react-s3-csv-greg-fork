@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+const SERVER_PORT = process.env.REACT_APP_SERVER_PORT
+
 
 function App() {
   const [isFilePicked, setIsFilePicked] = useState(false);
@@ -35,7 +37,7 @@ function App() {
           fileType: selectedFile.type,
         }),
       };
-      fetch("http://localhost:5000/begin-upload", requestOptions)
+      fetch(`http://localhost:${SERVER_PORT}/begin-upload`, requestOptions)
         .then((response) => response.json())
         .then((data) => resolve(data));
     });
